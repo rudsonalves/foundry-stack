@@ -1,0 +1,422 @@
+openapi: 3.1.0
+info:
+  title: FoundryStack API
+  version: 0.1.0
+  description: API base do starter full-stack FoundryStack.
+servers:
+  - url: http://localhost:8080
+paths:
+  /users:
+    post:
+      summary: Cria um usuário com e-mail verificado
+      requestBody:
+        required: true
+        description: O corpo da requisição é limitado a 64 KiB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Usuário criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserEnvelope'
+        '400':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+  /email-verifications:
+    post:
+      summary: Solicita um código de verificação de e-mail
+      requestBody:
+        required: true
+        description: O corpo da requisição é limitado a 64 KiB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestEmailVerificationRequest'
+      responses:
+        '202':
+          description: Código de verificação enviado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestEmailVerificationEnvelope'
+        '400':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /email-verifications/confirm:
+    post:
+      summary: Confirma um código de verificação de e-mail
+      requestBody:
+        required: true
+        description: O corpo da requisição é limitado a 64 KiB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmEmailVerificationRequest'
+      responses:
+        '200':
+          description: E-mail confirmado e prova temporária emitida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfirmEmailVerificationEnvelope'
+        '400':
+          $ref: '#/components/responses/Error'
+  /password-resets:
+    post:
+      summary: Solicita um código de recuperação de senha
+      description: >-
+        Retorna o mesmo contrato para contas existentes e inexistentes. O
+        identificador retornado pode ser sintético e não confirma a existência
+        da conta.
+      requestBody:
+        required: true
+        description: O corpo da requisição é limitado a 64 KiB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPasswordResetRequest'
+            example:
+              email: ana@example.com
+      responses:
+        '202':
+          description: Solicitação aceita
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestPasswordResetEnvelope'
+        '400':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+  /password-resets/confirm:
+    post:
+      summary: Confirma o código de recuperação de senha
+      requestBody:
+        required: true
+        description: O corpo da requisição é limitado a 64 KiB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmPasswordResetRequest'
+            example:
+              password_reset_id: 7fd1ec52-6f58-4fe2-b482-e31c06adfba5
+              code: '012345'
+      responses:
+        '200':
+          description: Código confirmado e prova temporária emitida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfirmPasswordResetEnvelope'
+        '400':
+          $ref: '#/components/responses/Error'
+  /password-resets/complete:
+    post:
+      summary: Troca a senha usando uma prova de recuperação
+      description: >-
+        Troca a senha, consome a prova e revoga todos os refresh tokens do
+        usuário na mesma transação. Não cria uma nova sessão.
+      requestBody:
+        required: true
+        description: O corpo da requisição é limitado a 64 KiB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompletePasswordResetRequest'
+            example:
+              password_reset_id: 7fd1ec52-6f58-4fe2-b482-e31c06adfba5
+              password_reset_token: opaque-secret
+              new_password: nova-senha-segura
+      responses:
+        '204':
+          description: Senha alterada e sessões renováveis revogadas
+        '400':
+          $ref: '#/components/responses/Error'
+  /auth/login:
+    post:
+      summary: Autentica um usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Tokens emitidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginEnvelope'
+        '401':
+          $ref: '#/components/responses/Error'
+  /auth/refresh:
+    post:
+      summary: Renova o access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Access token renovado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshEnvelope'
+        '401':
+          $ref: '#/components/responses/Error'
+  /auth/logout:
+    post:
+      summary: Revoga um refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '204':
+          description: Token revogado
+        '401':
+          $ref: '#/components/responses/Error'
+components:
+  responses:
+    Error:
+      description: Erro da operação
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [name, email, password, email_verification_token]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+        email_verification_token:
+          type: string
+          minLength: 1
+          description: Prova temporária obtida ao confirmar o e-mail.
+    RequestEmailVerificationRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+    ConfirmEmailVerificationRequest:
+      type: object
+      required: [verification_id, code]
+      properties:
+        verification_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+    RequestPasswordResetRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+    ConfirmPasswordResetRequest:
+      type: object
+      required: [password_reset_id, code]
+      properties:
+        password_reset_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+    CompletePasswordResetRequest:
+      type: object
+      required: [password_reset_id, password_reset_token, new_password]
+      properties:
+        password_reset_id:
+          type: string
+          format: uuid
+        password_reset_token:
+          type: string
+          minLength: 1
+        new_password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+    LoginRequest:
+      type: object
+      required: [email, password, client_id]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        client_id:
+          type: string
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+    UserEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [id, name, email]
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            email:
+              type: string
+              format: email
+    RequestEmailVerificationEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required:
+            - verification_id
+            - code_expires_at
+            - resend_available_at
+          properties:
+            verification_id:
+              type: string
+              format: uuid
+            code_expires_at:
+              type: string
+              format: date-time
+            resend_available_at:
+              type: string
+              format: date-time
+    ConfirmEmailVerificationEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [email_verification_token, expires_at]
+          properties:
+            email_verification_token:
+              type: string
+            expires_at:
+              type: string
+              format: date-time
+    RequestPasswordResetEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [password_reset_id, code_expires_at, resend_available_at]
+          properties:
+            password_reset_id:
+              type: string
+              format: uuid
+            code_expires_at:
+              type: string
+              format: date-time
+            resend_available_at:
+              type: string
+              format: date-time
+    ConfirmPasswordResetEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [password_reset_token, expires_at]
+          properties:
+            password_reset_token:
+              type: string
+            expires_at:
+              type: string
+              format: date-time
+    LoginEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          allOf:
+            - $ref: '#/components/schemas/AccessToken'
+            - type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+    RefreshEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/AccessToken'
+    AccessToken:
+      type: object
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          const: Bearer
+        expires_in:
+          type: integer
+          format: int64
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            request_id:
+              type: string
+            details:
+              type: array
+              items:
+                type: object
+                required: [field, message]
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
