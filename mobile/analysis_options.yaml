@@ -1,0 +1,18 @@
+include: package:flutter_lints/flutter.yaml
+
+formatter:
+  trailing_commas: preserve
+
+linter:
+  rules:
+    prefer_initializing_formals: false
+    prefer_relative_imports: true
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
